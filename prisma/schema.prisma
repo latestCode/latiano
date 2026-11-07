@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile       Profile?
+  conversations Conversation[]
+  savedPhrases  SavedPhrase[]
+}
+
+model Profile {
+  id           String  @id @default(uuid())
+  userId       String  @unique
+  displayName  String?
+  homeLanguage String?
+  country      String?
+  defaultVoice String?
+  autoPlayback Boolean @default(false)
+  offlineMode  Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  userId         String
+  title          String?
+  sourceLanguage String
+  targetLanguage String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, createdAt])
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  sourceText     String
+  translatedText String
+  sourceLang     String
+  targetLang     String
+  audioDuration  Float?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model SavedPhrase {
+  id             String   @id @default(uuid())
+  userId         String
+  originalText   String
+  translatedText String
+  sourceLang     String
+  targetLang     String
+  category       String
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model CommonPhrase {
+  id             String   @id @default(uuid())
+  category       String
+  phraseKey      String   @unique
+  defaultEnglish String
+  translations   Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([category])
+}
